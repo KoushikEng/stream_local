@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Local Video Streamer</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .breadcrumbs { margin-bottom: 15px; }
+        .breadcrumbs a { color: #0066cc; text-decoration: none; }
+        .breadcrumbs a:hover { text-decoration: underline; }
+        .folder-list, .video-list { margin-left: 20px; }
+        .folder-item, .video-item { margin: 5px 0; }
+        .folder-item a { color: #0066cc; text-decoration: none; font-weight: bold; }
+        .folder-item a:hover { text-decoration: underline; }
+        .video-item a { color: #333; text-decoration: none; }
+        .video-item a:hover { text-decoration: underline; }
+        .current-path { font-size: 1.2em; margin-bottom: 15px; }
+        #video-container { 
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            z-index: 1000;
+        }
+        #video-player {
+            width: 100%;
+            height: 100%;
+        }
+        #close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            background: rgba(0,0,0,0.5);
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            z-index: 1001;
+        }
+    </style>
+</head>
+<body>
+    <h1>Local Video Streamer</h1>
+    
+    <div class="breadcrumbs">
+        <a href="/">Home</a>
+        {% for crumb in breadcrumbs %}
+            &raquo; <a href="/?folder={{ crumb.path }}">{{ crumb.name }}</a>
+        {% endfor %}
+    </div>
+    
+    <div class="current-path">
+        {% if current_folder %}
+            Currently viewing: {{ current_folder }}
+        {% else %}
+            Root directory
+        {% endif %}
+    </div>
+    
+    {% if contents.subfolders %}
+    <div class="folder-list">
+        <h3>Folders</h3>
+        {% for folder in contents.subfolders %}
+            <div class="folder-item">
+                <a href="/?folder={{ os.path.join(current_folder, folder) if current_folder else folder }}">
+                    📁 {{ folder }}
+                </a>
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if contents.videos %}
+    <div class="video-list">
+        <h3>Videos</h3>
+        {% for video in contents.videos %}
+            <div class="video-item">
+                <a href="#" onclick="playVideo('/videos/{{ video.path }}')">
+                    ▶ {{ video.name }}
+                </a>
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if not contents.subfolders and not contents.videos %}
+        <p>No videos found in this directory.</p>
+    {% endif %}
+
+    <div id="video-container">
+        <button id="close-btn" onclick="closeVideo()">✕ Close (ESC)</button>
+        <video id="video-player" controls autoplay></video>
+    </div>
+
+    <script>
+        const videoContainer = document.getElementById('video-container');
+        const videoPlayer = document.getElementById('video-player');
+        
+        function playVideo(videoUrl) {
+            videoPlayer.src = videoUrl;
+            videoContainer.style.display = 'block';
+            videoPlayer.requestFullscreen().catch(err => {
+                console.log('Fullscreen error:', err);
+            });
+            videoPlayer.focus()
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeVideo() {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+            videoContainer.style.display = 'none';
+            videoPlayer.pause();
+            videoPlayer.src = '';
+            document.body.style.overflow = 'auto';
+        }
+        
+        // Close video when pressing Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeVideo();
+            }
+        });
+        
+        // Close video when exiting fullscreen
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                closeVideo();
+            }
+        });
+    </script>
+</body>
+</html>
