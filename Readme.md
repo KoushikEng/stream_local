@@ -14,13 +14,13 @@ A minimal Flask-based web application for streaming video files from a local dir
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/local-video-streamer.git
-   cd local-video-streamer
+   git clone https://github.com/koushikEng/minimal-video-stream.git
+   cd minimal-video-stream
    ```
 
 2. Install dependencies:
    ```bash
-   pip install flask waitress
+   pip install -r requirements.txt
    ```
 
    **Platform-specific dependencies**:
@@ -62,6 +62,9 @@ python video_server.py [directory_path]
 
 # Production mode
 python video_server.py [directory_path] --prod
+
+# Set host and port (default to 0.0.0.0 5000)
+python video_server.py [directory_path] -host [host] -port [port]
 ```
 
 ## Service Details
