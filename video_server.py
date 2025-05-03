@@ -4,6 +4,8 @@ import argparse
     
 parser = argparse.ArgumentParser()
 parser.add_argument('dir', nargs='?', type=str)
+parser.add_argument('-host', '-u', help="host")
+parser.add_argument('-port', '-p', type=int, help="port")
 parser.add_argument('--prod', action='store_true')
 args = parser.parse_args()
 
@@ -84,12 +86,14 @@ def serve_video(filename):
     return send_from_directory(VIDEO_DIR, filename)
 
 if __name__ == '__main__':
+    host = '0.0.0.0' if not args.host else args.host
+    port = 5000 if not args.port else args.port
     if args.prod:
         print("=== Running in pruduction server ===")
         from waitress import serve
         # For production
-        serve(app, host='0.0.0.0', port=5000, threads=2)
+        serve(app, host=host, port=port, threads=2)
     else:
         print("=== Running in development server ===")
         # For development (optional, you can remove this if you only want production)
-        app.run(host='0.0.0.0', port=5000, threaded=True)
+        app.run(host=host, port=port, threaded=True)
