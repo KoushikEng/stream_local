@@ -1,20 +1,48 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Local Video Streamer</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         .breadcrumbs { margin-bottom: 15px; }
         .breadcrumbs a { color: #0066cc; text-decoration: none; }
         .breadcrumbs a:hover { text-decoration: underline; }
-        .folder-list, .video-list { margin-left: 20px; }
-        .folder-item, .video-item { margin: 5px 0; }
+        .current-path { font-size: 1.2em; margin-bottom: 15px; }
+        .folder-list, .video-grid { margin-inline: 20px; }
+        .folder-item { margin: 10px 0; }
         .folder-item a { color: #0066cc; text-decoration: none; font-weight: bold; }
         .folder-item a:hover { text-decoration: underline; }
-        .video-item a { color: #333; text-decoration: none; }
-        .video-item a:hover { text-decoration: underline; }
-        .current-path { font-size: 1.2em; margin-bottom: 15px; }
-        #video-container { 
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .video-item {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .video-item:hover {
+            transform: scale(1.03);
+        }
+        .video-thumbnail {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .video-title {
+            margin-top: 5px;
+            font-size: 0.9em;
+            word-break: break-word;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #video-container {
             display: none;
             position: fixed;
             top: 0;
@@ -38,6 +66,16 @@
             padding: 5px 10px;
             cursor: pointer;
             z-index: 1001;
+        }
+        @media screen and (max-width: 1000px) {
+            .folder-list, .video-grid { margin-inline: 5px; }
+            .video-grid {
+                grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+                gap: 1rem;
+            }
+            .video-thumbnail {
+                height: 6rem;
+            }
         }
     </style>
 </head>
@@ -73,13 +111,11 @@
     {% endif %}
     
     {% if contents.videos %}
-    <div class="video-list">
-        <h3>Videos</h3>
+    <div class="video-grid">
         {% for video in contents.videos %}
-            <div class="video-item">
-                <a href="#" onclick="playVideo('/videos/{{ video.path }}')">
-                    ▶ {{ video.name }}
-                </a>
+            <div class="video-item" onclick="playVideo('/videos/{{ video.path }}')">
+                <img src="{{ video.thumbnail }}" class="video-thumbnail" alt="{{ video.name }}">
+                <div class="video-title">{{ video.name }}</div>
             </div>
         {% endfor %}
     </div>
@@ -97,11 +133,14 @@
     <script>
         const videoContainer = document.getElementById('video-container');
         const videoPlayer = document.getElementById('video-player');
-        if ('orientation' in screen) {
-            screen.orientation.lock('portrait');
-        }
+        let scrollPosition = 0;
+        let lastClickedElement = null;
         
-        function playVideo(videoUrl) {
+        function playVideo(videoUrl, clickedElement) {
+            // Store current scroll position and clicked element
+            scrollPosition = window.scrollY;
+            lastClickedElement = clickedElement;
+            
             videoPlayer.src = videoUrl;
             videoContainer.style.display = 'block';
             videoPlayer.requestFullscreen().catch(err => {
@@ -119,16 +158,22 @@
             videoPlayer.pause();
             videoPlayer.src = '';
             document.body.style.overflow = 'auto';
+            
+            // Restore scroll position after a small delay
+            setTimeout(() => {
+                window.scrollTo(0, scrollPosition);
+                if (lastClickedElement) {
+                    lastClickedElement.focus(); // Optional: focus the clicked element
+                }
+            }, 10);
         }
         
-        // Close video when pressing Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' || e.key === 'f') {
                 closeVideo();
             }
         });
         
-        // Close video when exiting fullscreen
         document.addEventListener('fullscreenchange', () => {
             if (!document.fullscreenElement) {
                 closeVideo();

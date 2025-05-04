@@ -1,7 +1,10 @@
 import os
 from flask import Flask, render_template, send_from_directory, request, Response
 import argparse
-    
+import ffmpeg
+from werkzeug.utils import secure_filename
+import random
+
 parser = argparse.ArgumentParser()
 parser.add_argument('dir', nargs='?', type=str)
 parser.add_argument('-host', '-u', help="host")
@@ -13,9 +16,38 @@ app = Flask(__name__)
 
 # Configure the video directory
 VIDEO_DIR = "C:\\Users\\koushik\\Downloads" if not args.dir else args.dir
+THUMBNAIL_DIR = os.path.join(os.path.dirname(__file__), "thumbnails")  # Where to store thumbnails
+
+# Ensure thumbnail directory exists
+os.makedirs(THUMBNAIL_DIR, exist_ok=True)
+
+def get_video_duration(video_path):
+    try:
+        probe = ffmpeg.probe(video_path)
+        return float(probe['format']['duration'])
+    except:
+        return 10  # Default duration if probing fails
+
+def generate_thumbnail(video_path, thumbnail_path):
+    try:
+        duration = get_video_duration(video_path)
+        random_time = random.uniform(1, max(2, duration-1))  # Between 1s and (duration-1)s
+        
+        (
+            ffmpeg.input(video_path, ss=str(random_time))
+            .output(thumbnail_path, vframes=1)
+            .overwrite_output()
+            .run(capture_stdout=True, capture_stderr=True, quiet=True)
+        )
+        return True
+    except ffmpeg.Error as e:
+        print(f"Error generating thumbnail for {video_path}: {e.stderr.decode()}")
+        return False
+    except Exception as e:
+        print(f"Unexpected error with {video_path}: {str(e)}")
+        return False
 
 def get_folder_contents(folder_path):
-    """Returns videos and subfolders that contain videos for the given path"""
     abs_path = os.path.join(VIDEO_DIR, folder_path)
     
     contents = {
@@ -23,29 +55,33 @@ def get_folder_contents(folder_path):
         'subfolders': set()
     }
 
-    # First pass to get immediate contents
     for item in os.listdir(abs_path):
         item_path = os.path.join(abs_path, item)
         rel_path = os.path.join(folder_path, item)
         
-        if os.path.isfile(item_path) and item.lower().endswith(('.mp4', '.ts', '.mkv', '.avi', '.mov', '.webm')):
+        if os.path.isfile(item_path) and item.lower().endswith(('.mp4', '.ts', '.mkv', '.avi', '.mov')):
+            # Generate thumbnail path
+            thumb_name = secure_filename(f"{item}.jpg")
+            thumb_path = os.path.join(THUMBNAIL_DIR, thumb_name)
+            
+            # Generate thumbnail if it doesn't exist or is older than the video
+            if not os.path.exists(thumb_path) or (
+                os.path.getmtime(item_path) > os.path.getmtime(thumb_path)):
+                generate_thumbnail(item_path, thumb_path)
+            
             contents['videos'].append({
                 'name': item,
                 'path': rel_path.replace('\\', '\\\\'),
-                'type': 'video/mp4' if item.lower().endswith('.mp4') else 'video/mp2t' if item.lower().endswith('.ts') else 'video/webm'
+                'thumbnail': f"/thumbnails/{thumb_name}"
             })
         elif os.path.isdir(item_path):
-            # Check if the subfolder contains any video files
             for root, _, files in os.walk(item_path):
-                if any(f.lower().endswith(('.mp4', '.ts', '.mkv', '.avi', '.mov', '.webm')) for f in files):
+                if any(f.lower().endswith(('.mp4', '.ts', '.mkv', '.avi', '.mov')) for f in files):
                     contents['subfolders'].add(item)
                     break
 
-    # Convert set to sorted list
     contents['subfolders'] = sorted(contents['subfolders'])
-    # Sort videos
     contents['videos'] = sorted(contents['videos'], key=lambda x: x['name'])
-    
     return contents
 
 @app.route('/')
@@ -53,7 +89,6 @@ def index():
     folder_path = request.args.get('folder', '')
     contents = get_folder_contents(folder_path)
     
-    # Calculate breadcrumbs
     breadcrumbs = []
     if folder_path:
         parts = folder_path.split(os.sep)
@@ -70,30 +105,11 @@ def index():
 
 @app.route('/videos/<path:filename>')
 def serve_video(filename):
-    video_path = os.path.join(VIDEO_DIR, filename)
-    
-    # Implement proper streaming for TS files
-    if filename.lower().endswith('.ts'):
-        def generate():
-            with open(video_path, 'rb') as f:
-                while True:
-                    data = f.read(1024 * 1024)  # 1MB chunks
-                    if not data:
-                        break
-                    yield data
-        return Response(generate(), mimetype='video/mp2t')
-    
     return send_from_directory(VIDEO_DIR, filename)
 
+@app.route('/thumbnails/<filename>')
+def serve_thumbnail(filename):
+    return send_from_directory(THUMBNAIL_DIR, filename)
+
 if __name__ == '__main__':
-    host = '0.0.0.0' if not args.host else args.host
-    port = 5000 if not args.port else args.port
-    if args.prod:
-        print("=== Running in pruduction server ===")
-        from waitress import serve
-        # For production
-        serve(app, host=host, port=port, threads=2)
-    else:
-        print("=== Running in development server ===")
-        # For development (optional, you can remove this if you only want production)
-        app.run(host=host, port=port, threaded=True)
+    app.run(host='0.0.0.0', port=5000, threaded=True)
