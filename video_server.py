@@ -57,6 +57,8 @@ def scan_and_generate_thumbnails():
     
     # First, collect all video files
     for root, _, files in os.walk(VIDEO_DIR):
+        if "$RECYCLE.BIN" in root:
+            continue
         for file in files:
             if file.lower().endswith(('.mp4', '.ts', '.mkv', '.avi', '.mov')):
                 video_path = os.path.join(root, file)
@@ -107,6 +109,8 @@ def get_folder_contents(folder_path):
             })
         elif os.path.isdir(item_path):
             for root, _, files in os.walk(item_path):
+                if "$RECYCLE.BIN" in root:
+                    continue
                 if any(f.lower().endswith(('.mp4', '.ts', '.mkv', '.avi', '.mov')) for f in files):
                     contents['subfolders'].add(item)
                     break
