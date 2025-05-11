@@ -15,19 +15,18 @@
         .breadcrumbs a { color: #0066cc; text-decoration: none; }
         .breadcrumbs a:hover { text-decoration: underline; }
         .current-path { font-size: 1.2em; margin-bottom: 15px; }
-        .folder-list { font-size: 1.2rem;}
-        .folder-list h3 { font-size: 1.4rem;}
-        .folder-list, .video-grid { margin-inline: 20px; }
+        .folder-list, .video-grid { margin-left: 20px; }
         .folder-item { margin: 10px 0; }
         .folder-item a { color: #0066cc; text-decoration: none; font-weight: bold; }
         .folder-item a:hover { text-decoration: underline; }
         .video-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 25px;
             margin-top: 20px;
         }
         .video-item {
+            position: relative;
             cursor: pointer;
             transition: transform 0.2s;
         }
@@ -36,18 +35,25 @@
         }
         .video-thumbnail {
             width: 100%;
-            height: 120px;
+            height: 140px;
             object-fit: cover;
             border-radius: 4px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .video-preview {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 4px;
+            display: none;
         }
         .video-title {
             margin-top: 5px;
             font-size: 0.9em;
             word-break: break-word;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
         #video-container {
             display: none;
@@ -74,119 +80,55 @@
             cursor: pointer;
             z-index: 1001;
         }
-        @media screen and (max-width: 1000px) {
-            .folder-list, .video-grid { margin-inline: 5px; }
-            .video-grid {
-                grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
-                gap: 1rem;
-            }
-            .video-thumbnail {
-                height: 6rem;
-            }
-        }
     </style>
 </head>
 <body>
-    <h1>Local Video Streamer</h1>
-    
-    <div class="breadcrumbs">
-        <a href="/">Home</a>
-        {% for crumb in breadcrumbs %}
-            &raquo; <a href="/?folder={{ crumb.path }}">{{ crumb.name }}</a>
-        {% endfor %}
-    </div>
-    
-    <div class="current-path">
-        {% if current_folder %}
-            Currently viewing: {{ current_folder }}
-        {% else %}
-            Root directory
-        {% endif %}
-    </div>
-    
-    {% if contents.subfolders %}
-    <div class="folder-list">
-        <h3>Folders</h3>
-        {% for folder in contents.subfolders %}
-            <div class="folder-item">
-                <a href="/?folder={{ os.path.join(current_folder, folder) if current_folder else folder }}">
-                    📁 {{ folder }}
-                </a>
-            </div>
-        {% endfor %}
-    </div>
-    {% endif %}
+    <!-- [Keep all the existing HTML structure] -->
     
     {% if contents.videos %}
     <div class="video-grid">
         {% for video in contents.videos %}
-            <div class="video-item" onclick="playVideo('/videos/{{ video.path }}')">
+            <div class="video-item" 
+                 onclick="playVideo('/videos/{{ video.path }}')"
+                 onmouseenter="startPreview(this, '{{ video.preview }}')"
+                 onmouseleave="stopPreview(this)">
                 <img src="{{ video.thumbnail }}" class="video-thumbnail" alt="{{ video.name }}">
+                <video class="video-preview" loop muted preload="none"></video>
                 <div class="video-title">{{ video.name }}</div>
             </div>
         {% endfor %}
     </div>
     {% endif %}
-    
-    {% if not contents.subfolders and not contents.videos %}
-        <p>No videos found in this directory.</p>
-    {% endif %}
 
-    <div id="video-container">
-        <button id="close-btn" onclick="closeVideo()">✕ Close (ESC)</button>
-        <video id="video-player" controls autoplay></video>
-    </div>
+    <!-- [Keep the video container and scripts] -->
 
     <script>
-	if ("orientation" in screen) screen.orientation.lock("portrait-primary");
-        const videoContainer = document.getElementById('video-container');
-        const videoPlayer = document.getElementById('video-player');
-        let scrollPosition = 0;
-        let lastClickedElement = null;
-        
-        function playVideo(videoUrl, clickedElement) {
-            // Store current scroll position and clicked element
-            scrollPosition = window.scrollY;
-            lastClickedElement = clickedElement;
+        // Preview control functions
+        function startPreview(element, previewUrl) {
+            const previewVideo = element.querySelector('.video-preview');
+            const thumbnail = element.querySelector('.video-thumbnail');
             
-            videoPlayer.src = videoUrl;
-            videoContainer.style.display = 'block';
-            videoPlayer.requestFullscreen().catch(err => {
-                console.log('Fullscreen error:', err);
-            });
-            videoPlayer.focus()
-            document.body.style.overflow = 'hidden';
+            if (!previewVideo.src) {
+                previewVideo.src = previewUrl;
+                previewVideo.load();
+            }
+            
+            thumbnail.style.display = 'none';
+            previewVideo.style.display = 'block';
+            previewVideo.currentTime = 0;
+            previewVideo.play().catch(e => console.log("Preview play error:", e));
         }
         
-        function closeVideo() {
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
-            }
-            videoContainer.style.display = 'none';
-            videoPlayer.pause();
-            videoPlayer.src = '';
-            document.body.style.overflow = 'auto';
+        function stopPreview(element) {
+            const previewVideo = element.querySelector('.video-preview');
+            const thumbnail = element.querySelector('.video-thumbnail');
             
-            // Restore scroll position after a small delay
-            setTimeout(() => {
-                window.scrollTo(0, scrollPosition);
-                if (lastClickedElement) {
-                    lastClickedElement.focus(); // Optional: focus the clicked element
-                }
-            }, 10);
+            previewVideo.pause();
+            previewVideo.style.display = 'none';
+            thumbnail.style.display = 'block';
         }
         
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' || e.key === 'f') {
-                closeVideo();
-            }
-        });
-        
-        document.addEventListener('fullscreenchange', () => {
-            if (!document.fullscreenElement) {
-                closeVideo();
-            }
-        });
+        // [Keep all the existing player control functions]
     </script>
 </body>
 </html>
