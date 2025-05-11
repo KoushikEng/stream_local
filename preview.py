@@ -16,7 +16,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('video_previewer.log'),
+        logging.FileHandler('video_previewer.log', encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
