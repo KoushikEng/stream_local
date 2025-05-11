@@ -9,6 +9,8 @@ import time
 import logging
 from collections import namedtuple
 
+BASE_TEMP_DIR = "temp_dir"
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -57,8 +59,9 @@ def extract_random_clips(input_video, num_clips, clip_duration, temp_dir):
     
     # Generate random non-overlapping start times
     start_times = set()
-    while len(start_times) < num_clips:
-        start_time = random.uniform(0, max_start)
+    interval = total_duration/num_clips  # generate clips from evenly divided video length by number of clips
+    for i in range(num_clips):
+        start_time = random.uniform(interval*i, interval*(i+1)-clip_duration)
         # Ensure no overlaps with existing clips
         if not any(abs(start_time - st) < clip_duration for st in start_times):
             start_times.add(start_time)
@@ -124,7 +127,7 @@ def create_video_preview(input_video, output_preview, num_clips=4, clip_duration
         return False
     
     # Create unique temp directory
-    temp_dir = f"preview_temp_{os.path.basename(input_video)}_{int(time.time())}"
+    temp_dir = f"{BASE_TEMP_DIR}\\preview_temp_{os.path.basename(input_video)}_{int(time.time())}"
     os.makedirs(temp_dir, exist_ok=True)
     
     try:
