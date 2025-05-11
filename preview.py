@@ -1,3 +1,4 @@
+from functools import partial
 import os
 import random
 import shutil
@@ -114,7 +115,7 @@ def create_transition(input1, input2, transition_duration, output_file):
         logger.error(f"Transition error: {e.stderr.decode().strip()}")
     return False
 
-def create_video_preview(input_video, output_preview, num_clips=4, clip_duration=5, transition_duration=1.0):
+def create_video_preview(input_video, output_preview, num_clips=4, clip_duration=5, transition_duration=1.0, transition=False):
     """Create preview with time-sorted clips and transitions."""
     logger.info(f"Creating preview for {input_video}")
     
@@ -134,25 +135,26 @@ def create_video_preview(input_video, output_preview, num_clips=4, clip_duration
             return False
         
         # Step 2: Create transitions between time-sorted clips
-        transition_files = []
-        for i in range(len(clips) - 1):
-            transition_path = os.path.join(temp_dir, f"transition_{i}.mp4")
-            if create_transition(
-                clips[i].file_path, 
-                clips[i+1].file_path, 
-                transition_duration,
-                transition_path
-            ):
-                transition_files.append(transition_path)
-            else:
-                logger.warning(f"Failed to create transition {i}")
+        if transition:
+            transition_files = []
+            for i in range(len(clips) - 1):
+                transition_path = os.path.join(temp_dir, f"transition_{i}.mp4")
+                if create_transition(
+                    clips[i].file_path, 
+                    clips[i+1].file_path, 
+                    transition_duration,
+                    transition_path
+                ):
+                    transition_files.append(transition_path)
+                else:
+                    logger.warning(f"Failed to create transition {i}")
         
         # Step 3: Build final video with time-sorted clips
         try:
             inputs = []
             for i, clip in enumerate(clips):
                 inputs.append(ffmpeg.input(clip.file_path))
-                if i < len(transition_files):
+                if transition and i < len(transition_files):
                     inputs.append(ffmpeg.input(transition_files[i]))
             
             # Use optimized encoding settings
@@ -184,13 +186,13 @@ def create_video_preview(input_video, output_preview, num_clips=4, clip_duration
         #         pass
         try:
             shutil.rmtree(temp_dir)
-            os.rmdir(temp_dir)
+            # os.rmdir(temp_dir)
         except Exception as e:
             logger.exception(e)
     
     return False
 
-def process_video_file(args):
+def process_video_file(args, transition=False):
     """Process a single video file with the given arguments."""
     input_video, output_dir, num_clips, clip_duration, transition_duration = args
     
@@ -211,10 +213,11 @@ def process_video_file(args):
         output_preview,
         num_clips,
         clip_duration,
-        transition_duration
+        transition_duration,
+        transition=transition
     )
 
-def batch_create_previews(input_dir, output_dir, num_clips=4, clip_duration=5, transition_duration=1.0, max_workers=4):
+def batch_create_previews(input_dir, output_dir, num_clips=4, clip_duration=5, transition_duration=1.0, max_workers=4, transition=False):
     """Batch process all videos in a directory."""
     if not os.path.exists(input_dir):
         logger.error(f"Input directory not found: {input_dir}")
@@ -242,8 +245,10 @@ def batch_create_previews(input_dir, output_dir, num_clips=4, clip_duration=5, t
     ]
     
     success_count = 0
+    
+    process_video_file_with_kwargs = partial(process_video_file, transition=transition)
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        results = executor.map(process_video_file, args_list)
+        results = executor.map(process_video_file_with_kwargs, args_list)
         success_count = sum(results)
     
     logger.info(f"Completed: {success_count} successful, {len(video_files)-success_count} failed")
@@ -255,6 +260,7 @@ if __name__ == "__main__":
     parser.add_argument('output', help='Output file or directory')
     parser.add_argument('--num_clips', type=int, default=4, help='Number of clips (default: 4)')
     parser.add_argument('--clip_duration', type=int, default=5, help='Clip duration in seconds (default: 5)')
+    parser.add_argument('--transition', action='store_true', help='Enable transition between clips')
     parser.add_argument('--transition_duration', type=float, default=1.0, help='Transition duration (default: 1.0)')
     parser.add_argument('--workers', type=int, default=6, help='Parallel workers (default: 4)')
     parser.add_argument('--debug', action='store_true', help='Enable debug logging')
@@ -271,7 +277,8 @@ if __name__ == "__main__":
             args.num_clips,
             args.clip_duration,
             args.transition_duration,
-            args.workers
+            args.workers,
+            transition=args.transition
         )
     else:
         create_video_preview(
@@ -279,5 +286,6 @@ if __name__ == "__main__":
             args.output,
             args.num_clips,
             args.clip_duration,
-            args.transition_duration
+            args.transition_duration,
+            transition=args.transition
         )
