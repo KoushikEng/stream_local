@@ -157,7 +157,7 @@ if __name__ == '__main__':
         print("=== Running in pruduction server ===")
         from waitress import serve
         # For production
-        serve(app, host=host, port=port, threads=2)
+        serve(app, host=host, port=port, threads=4)
     else:
         print("=== Running in development server ===")
         # For development (optional, you can remove this if you only want production)

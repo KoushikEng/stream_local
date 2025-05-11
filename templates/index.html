@@ -138,6 +138,7 @@
     </div>
 
     <script>
+	if ("orientation" in screen) screen.orientation.lock("portrait-primary");
         const videoContainer = document.getElementById('video-container');
         const videoPlayer = document.getElementById('video-player');
         let scrollPosition = 0;
