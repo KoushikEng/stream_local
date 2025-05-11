@@ -13,7 +13,7 @@ BASE_TEMP_DIR = "temp_dir"
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('video_previewer.log', encoding='utf-8'),
@@ -220,7 +220,7 @@ def process_video_file(args, transition=False):
         transition=transition
     )
 
-def batch_create_previews(input_dir, output_dir, num_clips=4, clip_duration=5, transition_duration=1.0, max_workers=4, transition=False):
+def batch_create_previews(input_dir, output_dir, num_clips=2, clip_duration=2, transition_duration=1.0, max_workers=4, transition=False):
     """Batch process all videos in a directory."""
     if not os.path.exists(input_dir):
         logger.error(f"Input directory not found: {input_dir}")
@@ -253,6 +253,11 @@ def batch_create_previews(input_dir, output_dir, num_clips=4, clip_duration=5, t
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         results = executor.map(process_video_file_with_kwargs, args_list)
         success_count = sum(results)
+        
+    try:
+        shutil.rmtree(BASE_TEMP_DIR)
+    except FileNotFoundError:
+        pass
     
     logger.info(f"Completed: {success_count} successful, {len(video_files)-success_count} failed")
     return success_count > 0
