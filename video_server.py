@@ -162,11 +162,11 @@ if __name__ == '__main__':
     host = '0.0.0.0' if not args.host else args.host
     port = 5000 if not args.port else args.port
     if args.prod:
-        print("=== Running in pruduction server ===")
+        print("=== Running in pruduction mode ===")
         from waitress import serve
         # For production
         serve(app, host=host, port=port, threads=4)
     else:
-        print("=== Running in development server ===")
+        print("=== Running in development mode ===")
         # For development (optional, you can remove this if you only want production)
         app.run(host=host, port=port, threaded=True, debug=True)
