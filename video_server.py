@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('dir', nargs='?', type=str)
 parser.add_argument('-host', '-u', help="host")
 parser.add_argument('-port', '-p', type=int, help="port")
-parser.add_argument('--prod', action='store_true')
+parser.add_argument('--dev', action='store_true')
 args = parser.parse_args()
 
 app = Flask(__name__, static_folder="public", static_url_path='')
@@ -145,7 +145,6 @@ def serve_video(filename):
 
 @app.route('/previews/<path:filename>')
 def serve_preview(filename):
-    print(filename)
     return send_from_directory('previews', filename)
 
 @app.route('/thumbnails/<filename>')
@@ -161,12 +160,13 @@ if __name__ == '__main__':
     # start the web server
     host = '0.0.0.0' if not args.host else args.host
     port = 5000 if not args.port else args.port
-    if args.prod:
+    if args.dev:
+        print("=== Running in development mode ===")
+        # For development (optional, you can remove this if you only want production)
+        app.run(host=host, port=port, threaded=True, debug=True)
+    else:
         print("=== Running in pruduction mode ===")
         from waitress import serve
         # For production
         serve(app, host=host, port=port, threads=4)
-    else:
-        print("=== Running in development mode ===")
-        # For development (optional, you can remove this if you only want production)
-        app.run(host=host, port=port, threaded=True, debug=True)
+
