@@ -153,13 +153,16 @@ def serve_thumbnail(filename):
 
 if __name__ == '__main__':
     # Generate thumbnails at startup
-    from preview import batch_create_previews
-    batch_create_previews(VIDEO_DIR, "previews")
-    scan_and_generate_thumbnails()
+    # Only generate thumbnails in the actual application process
+    # Not in the reloader process
+    if not os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        from preview import batch_create_previews
+        batch_create_previews(VIDEO_DIR, "previews")
+        scan_and_generate_thumbnails()
     
     # start the web server
     host = '0.0.0.0' if not args.host else args.host
-    port = 5000 if not args.port else args.port
+    port = 80 if not args.port else args.port
     if args.dev:
         print("=== Running in development mode ===")
         # For development (optional, you can remove this if you only want production)
@@ -168,5 +171,5 @@ if __name__ == '__main__':
         print("=== Running in pruduction mode ===")
         from waitress import serve
         # For production
-        serve(app, host=host, port=port, threads=4)
+        serve(app, host=host, port=port, threads=6)
 
