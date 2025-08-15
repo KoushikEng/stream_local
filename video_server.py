@@ -134,10 +134,11 @@ def index():
                 'path': os.sep.join(parts[:i+1])
             })
     
-    return render_template('index.html', 
-                         contents=contents,
-                         current_folder=folder_path,
-                         breadcrumbs=breadcrumbs)
+    return render_template('index.html',
+                           path=os.path,
+                           contents=contents,
+                           current_folder=folder_path,
+                           breadcrumbs=breadcrumbs)
 
 @app.route('/videos/<path:filename>')
 def serve_video(filename):
