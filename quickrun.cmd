@@ -11,10 +11,12 @@ if "%~1"=="" (
 set "PATH_ARG=%~1"
 
 echo Creating Python virtual environment...
-python -m venv .venv
-if errorlevel 1 (
-    echo Failed to create virtual environment
-    exit /b 1
+IF NOT EXIST ".venv\Scripts\pip.exe" (
+    python -m venv .venv
+    if errorlevel 1 (
+        echo Failed to create virtual environment
+        exit /b 1
+    )
 )
 
 echo Installing requirements...
