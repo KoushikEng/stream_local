@@ -1,3 +1,5 @@
+import asyncio
+import sys
 import os
 import time
 import argparse
@@ -18,6 +20,26 @@ parser.add_argument('--dev', action='store_true')
 args = parser.parse_args()
 
 app = Quart(__name__, static_folder="public", static_url_path='')
+
+def handle_win_error_10054(loop, context):
+    """
+    Suppress specific Windows asyncio errors caused by client disconnects.
+    """
+    msg = context.get("exception", context["message"])
+    # Check for the specific socket error
+    if "WinError 10054" in str(msg) or "ConnectionResetError" in str(msg):
+        # This is noise. Swallow it.
+        return
+    
+    # If it's a real error, let the default handler scream about it
+    loop.default_exception_handler(context)
+
+@app.before_serving
+async def startup():
+    # Only apply this patch on Windows
+    if sys.platform == 'win32':
+        loop = asyncio.get_running_loop()
+        loop.set_exception_handler(handle_win_error_10054)
 
 # Configure the video directory
 VIDEO_DIR = "C:\\Users\\koushik\\Downloads" if not args.dir else args.dir
