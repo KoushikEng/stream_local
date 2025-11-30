@@ -12,19 +12,14 @@
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
         h1 { color: #333; }
+        /* --- Existing Styles --- */
         .breadcrumbs { margin-bottom: 15px; padding: 10px; }
         .breadcrumbs a { color: #0066cc; text-decoration: none; }
         .breadcrumbs a:hover { text-decoration: underline; }
         .current-path { font-size: 1.1em; margin-bottom: 15px; color: #666; }
         
         .folder-list { margin-bottom: 30px; }
-        .folder-item { 
-            margin: 5px 0; 
-            padding: 10px; 
-            background: white; 
-            border-radius: 4px; 
-            border-left: 4px solid #0066cc;
-        }
+        .folder-item { margin: 5px 0; padding: 10px; background: white; border-radius: 4px; border-left: 4px solid #0066cc; }
         .folder-item a { color: #333; text-decoration: none; font-weight: bold; display: block; }
         .folder-item:hover { background: #f0f7ff; }
 
@@ -43,91 +38,88 @@
             position: relative;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-        .media-item:hover {
-            transform: scale(1.03);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            z-index: 10;
-        }
+        .media-item:hover { transform: scale(1.03); box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 10; }
+
+        .media-thumbnail-container { position: relative; width: 100%; height: 140px; background: #000; }
+        .media-thumbnail { width: 100%; height: 100%; object-fit: cover; }
         
-        .media-thumbnail-container {
-            position: relative;
-            width: 100%;
-            height: 140px;
-            background: #000;
-        }
-
-        .media-thumbnail {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
         .video-preview {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            object-fit: cover;
-            display: none;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; display: none;
         }
-
-        /* Icon overlay to distinguish video from image */
         .type-indicator {
-            position: absolute;
-            top: 5px; right: 5px;
-            background: rgba(0,0,0,0.6);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.7em;
-            font-weight: bold;
+            position: absolute; top: 5px; right: 5px;
+            background: rgba(0,0,0,0.6); color: white;
+            padding: 2px 6px; border-radius: 4px;
+            font-size: 0.7em; font-weight: bold;
+        }
+        .media-title {
+            padding: 10px; font-size: 0.9em; word-break: break-word;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #444;
         }
 
-        .media-title {
-            padding: 10px;
-            font-size: 0.9em;
-            word-break: break-word;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            color: #444;
+        video {
+            outline: none;
         }
         
+        /* --- Viewer & Navigation Styles --- */
         #viewer-container {
             display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95);
-            z-index: 1000;
-            display: flex; /* hidden by default via JS, but flex when active */
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            visibility: hidden; /* Use visibility to toggle instead of display for transition potential */
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 1000;
+            flex-direction: column; justify-content: center; align-items: center;
         }
 
         #viewer-content {
-            max-width: 100%;
-            max-height: 100%;
-            width: auto;
-            height: auto;
+            position: relative;
+            width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
         }
 
-        #video-player { width: 100%; height: 100%; max-height: 90vh; }
-        #image-viewer { max-width: 95vw; max-height: 90vh; object-fit: contain; }
+        #video-player { width: 100%; height: 100%; /* max-height: 90vh; max-width: 90vw; */ }
+        #image-viewer { max-width: 100vw; max-height: 100vh; object-fit: contain; }
+
+        /* Navigation Buttons */
+        .nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            font-size: 3rem;
+            padding: 20px;
+            cursor: pointer;
+            z-index: 1002;
+            transition: background 0.3s;
+            user-select: none;
+            border-radius: 5px;
+        }
+        .nav-btn:hover { background: rgba(255, 255, 255, 0.3); }
+        .prev-btn { left: 10px; }
+        .next-btn { right: 10px; }
+
+        /* Hide buttons on small mobile screens to prevent obstruction (users will swipe) */
+        @media (max-width: 600px) {
+            .nav-btn { display: none; }
+        }
 
         #close-btn {
-            position: absolute;
-            top: 20px; right: 20px;
-            color: white;
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid white;
-            padding: 8px 15px;
-            cursor: pointer;
-            z-index: 1001;
-            border-radius: 4px;
+            position: absolute; top: 20px; right: 20px;
+            color: white; background: rgba(255, 255, 255, 0.2);
+            border: 1px solid white; padding: 8px 15px;
+            cursor: pointer; z-index: 1003; border-radius: 4px;
         }
         #close-btn:hover { background: rgba(255, 255, 255, 0.4); }
+
+        /* Loading Spinner */
+        #loader {
+            border: 4px solid #f3f3f3; border-top: 4px solid #3498db;
+            border-radius: 50%; width: 30px; height: 30px;
+            animation: spin 1s linear infinite;
+            position: absolute; display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         @media screen and (max-width: 768px) {
             .media-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
@@ -146,11 +138,7 @@
     </div>
     
     <div class="current-path">
-        {% if current_folder %}
-            📂 {{ current_folder }}
-        {% else %}
-            Root Directory
-        {% endif %}
+        {% if current_folder %} 📂 {{ current_folder }} {% else %} Root Directory {% endif %}
     </div>
     
     {% if contents.subfolders %}
@@ -170,13 +158,12 @@
     <div class="media-grid">
         {% for item in contents.media %}
             <div class="media-item" 
-                 onclick="openMedia('{{ item.type }}', '/videos/{{ item.path }}')"
+                 onclick="openViewer({{ loop.index0 }})"
                  {% if item.type == 'video' %}
                  onmouseenter="startPreview(this, '{{ item.preview }}')"
                  onmouseleave="stopPreview(this)"
                  {% endif %}
                  >
-                
                 <div class="media-thumbnail-container">
                     <span class="type-indicator">{{ item.type|upper }}</span>
                     <img src="{{ item.thumbnail }}" class="media-thumbnail" alt="{{ item.name }}" loading="lazy">
@@ -194,51 +181,78 @@
         <p>No media found in this directory.</p>
     {% endif %}
 
-    <div id="viewer-container" style="display: none;">
+    <div id="viewer-container">
         <button id="close-btn" onclick="closeViewer()">✕ Close (ESC)</button>
-        <video id="video-player" controls style="display: none;"></video>
-        <img id="image-viewer" src="" style="display: none;">
+        
+        <div id="viewer-content">
+            <button class="nav-btn prev-btn" onclick="navigate(-1)">&#10094;</button>
+            
+            <div id="loader"></div>
+            <video id="video-player" controls style="display: none;"></video>
+            <img id="image-viewer" src="" style="display: none;">
+            
+            <button class="nav-btn next-btn" onclick="navigate(1)">&#10095;</button>
+        </div>
     </div>
 
     <script>
+        // --- 1. DATA INJECTION ---
+        // We inject the Python list directly into JS. 
+        // Note: Jinja's tojson is safe and handles escaping.
+        const playlist = {{ contents.media | tojson }};
+        let currentIndex = 0;
+        let scrollPosition = 0;
+
         const viewerContainer = document.getElementById('viewer-container');
         const videoPlayer = document.getElementById('video-player');
         const imageViewer = document.getElementById('image-viewer');
-        let scrollPosition = 0;
+        const loader = document.getElementById('loader');
 
-        function openMedia(type, url) {
+        // --- 2. CORE VIEWER LOGIC ---
+
+        function openViewer(index) {
+            if (index < 0 || index >= playlist.length) return;
+            
+            currentIndex = index;
             scrollPosition = window.scrollY;
+            
             viewerContainer.style.display = 'flex';
-            viewerContainer.style.visibility = 'visible';
             document.body.style.overflow = 'hidden';
+            
+            loadMedia(currentIndex);
+        }
 
-            if (type === 'video') {
-                imageViewer.style.display = 'none';
-                imageViewer.src = ''; // Clear memory
-                
-                videoPlayer.style.display = 'block';
-                videoPlayer.src = url;
-                videoPlayer.play().catch(e => console.log("Autoplay blocked", e));
-                videoPlayer.focus();
+        function loadMedia(index) {
+            const item = playlist[index];
+            if (!item) return;
+
+            // Reset Display
+            videoPlayer.style.display = 'none';
+            videoPlayer.pause();
+            imageViewer.style.display = 'none';
+            loader.style.display = 'block';
+
+            if (item.type === 'video') {
+                videoPlayer.src = "/videos/" + item.path;
+                videoPlayer.oncanplay = () => {
+                    loader.style.display = 'none';
+                    videoPlayer.style.display = 'block';
+                    videoPlayer.play().catch(e => console.log("Autoplay blocked", e));
+                    videoPlayer.focus(); // Focus for keyboard controls
+                };
             } else {
-                videoPlayer.style.display = 'none';
-                videoPlayer.pause();
-                videoPlayer.src = ''; // Clear memory
-
-                imageViewer.style.display = 'block';
-                imageViewer.src = url;
+                imageViewer.src = "/videos/" + item.path; // Assuming images are served via same route or static
+                imageViewer.onload = () => {
+                    loader.style.display = 'none';
+                    imageViewer.style.display = 'block';
+                };
             }
         }
-        
+
         function closeViewer() {
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
-            }
+            if (document.fullscreenElement) document.exitFullscreen();
             
-            viewerContainer.style.visibility = 'hidden';
             viewerContainer.style.display = 'none';
-            
-            // Reset both players
             videoPlayer.pause();
             videoPlayer.src = '';
             imageViewer.src = '';
@@ -247,40 +261,81 @@
             window.scrollTo(0, scrollPosition);
         }
 
-        // Preview control functions (Only for videos)
+        function navigate(direction) {
+            // direction: -1 (prev) or 1 (next)
+            currentIndex += direction;
+            
+            // Loop navigation
+            if (currentIndex >= playlist.length) currentIndex = 0;
+            if (currentIndex < 0) currentIndex = playlist.length - 1;
+            
+            loadMedia(currentIndex);
+        }
+
+        // --- 3. INPUT HANDLING (Keyboard & Touch) ---
+
+        // Keyboard
+        document.addEventListener('keydown', (e) => {
+            if (viewerContainer.style.display === 'none') return;
+
+            if (e.key === 'Escape' || e.key === 'f') closeViewer();
+            if (e.key === 'ArrowLeft') navigate(-1);
+            if (e.key === 'ArrowRight') navigate(1);
+        });
+
+        // Touch / Swipe
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const minSwipeDistance = 50; // Threshold in pixels
+
+        viewerContainer.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, {passive: true});
+
+        viewerContainer.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, {passive: true});
+
+        function handleSwipe() {
+            const distance = touchStartX - touchEndX;
+            
+            if (Math.abs(distance) > minSwipeDistance) {
+                if (distance > 0) {
+                    // Swiped Left -> Next
+                    navigate(1);
+                } else {
+                    // Swiped Right -> Prev
+                    navigate(-1);
+                }
+            }
+        }
+
+        // --- 4. PREVIEW LOGIC (Unchanged) ---
         function startPreview(element, previewUrl) {
             const previewVideo = element.querySelector('.video-preview');
             const thumbnail = element.querySelector('.media-thumbnail');
-            
             if (previewVideo && !previewVideo.src) {
                 previewVideo.src = previewUrl;
                 previewVideo.load();
             }
-            
             if (previewVideo) {
                 thumbnail.style.opacity = '0';
                 previewVideo.style.display = 'block';
                 previewVideo.currentTime = 0;
-                previewVideo.play().catch(e => console.log("Preview play error:", e));
+                previewVideo.play().catch(e => {});
             }
         }
         
         function stopPreview(element) {
             const previewVideo = element.querySelector('.video-preview');
             const thumbnail = element.querySelector('.media-thumbnail');
-            
             if (previewVideo) {
                 previewVideo.pause();
                 previewVideo.style.display = 'none';
                 thumbnail.style.opacity = '1';
             }
         }
-        
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeViewer();
-            }
-        });
     </script>
 </body>
 </html>
