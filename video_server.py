@@ -1,12 +1,14 @@
 import os
 import time
-from flask import Flask, render_template, send_from_directory, request
 import argparse
 import ffmpeg
 from werkzeug.utils import secure_filename
 import random
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image, ImageOps  # Added Pillow for image handling
+
+# CHANGED: Import from Quart instead of Flask
+from quart import Quart, render_template, send_from_directory, request
 
 parser = argparse.ArgumentParser()
 parser.add_argument('dir', nargs='?', type=str)
@@ -15,7 +17,7 @@ parser.add_argument('-port', '-p', type=int, help="port")
 parser.add_argument('--dev', action='store_true')
 args = parser.parse_args()
 
-app = Flask(__name__, static_folder="public", static_url_path='')
+app = Quart(__name__, static_folder="public", static_url_path='')
 
 # Configure the video directory
 VIDEO_DIR = "C:\\Users\\koushik\\Downloads" if not args.dir else args.dir
@@ -26,6 +28,8 @@ os.makedirs(THUMBNAIL_DIR, exist_ok=True)
 
 VIDEO_EXTS = ('.mp4', '.ts', '.mkv', '.avi', '.mov', '.webm')
 IMAGE_EXTS = ('.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp')
+
+# --- Helper Functions (Keep these synchronous mostly, as they are CPU bound) ---
 
 def get_video_duration(video_path):
     try:
@@ -80,13 +84,15 @@ def process_thumbnail_task(file_path, thumb_path, is_video):
     return True
 
 def scan_and_generate_thumbnails():
+    """
+    This remains synchronous because we run it at startup.
+    """
     print("Starting media scan and thumbnail generation...")
     start_time = time.time()
     media_files = []
     
     for root, _, files in os.walk(VIDEO_DIR):
-        if "$RECYCLE.BIN" in root:
-            continue
+        if "$RECYCLE.BIN" in root: continue
         for file in files:
             lower_file = file.lower()
             is_video = lower_file.endswith(VIDEO_EXTS)
@@ -98,11 +104,11 @@ def scan_and_generate_thumbnails():
                 # Create a safe filename for the thumbnail
                 thumb_name = secure_filename(f"{rel_path.replace(os.sep, '_')}.jpg")
                 thumb_path = os.path.join(THUMBNAIL_DIR, thumb_name)
-                
                 media_files.append((file_path, thumb_path, is_video))
     
     print(f"Found {len(media_files)} media files")
     
+    # We can still use ThreadPoolExecutor for CPU bound tasks
     with ThreadPoolExecutor(max_workers=6) as executor:
         # Submit tasks
         futures = [executor.submit(process_thumbnail_task, mf[0], mf[1], mf[2]) for mf in media_files]
@@ -119,11 +125,7 @@ def scan_and_generate_thumbnails():
 
 def get_folder_contents(folder_path):
     abs_path = os.path.join(VIDEO_DIR, folder_path)
-    
-    contents = {
-        'media': [], # Unified list for mixed content
-        'subfolders': set()
-    }
+    contents = {'media': [], 'subfolders': set()}
 
     if not os.path.exists(abs_path):
         return contents
@@ -139,17 +141,14 @@ def get_folder_contents(folder_path):
             
             if is_video or is_image:
                 base_name = secure_filename(rel_path.replace(os.sep, '_'))
-                
                 media_item = {
                     'name': item,
                     'path': rel_path.replace('\\', '/').replace('\'', '\\\''),
                     'thumbnail': f"/thumbnails/{base_name}.jpg",
                     'type': 'video' if is_video else 'image'
                 }
-                
                 if is_video:
                     media_item['preview'] = f"/previews/preview_{item}"
-                
                 contents['media'].append(media_item)
                 
         elif os.path.isdir(item_path):
@@ -160,7 +159,6 @@ def get_folder_contents(folder_path):
                 if any(f.lower().endswith(VIDEO_EXTS + IMAGE_EXTS) for f in files):
                     has_media = True
                     break
-            
             if has_media:
                 contents['subfolders'].add(item)
 
@@ -168,9 +166,13 @@ def get_folder_contents(folder_path):
     contents['media'] = sorted(contents['media'], key=lambda x: x['name'])
     return contents
 
+# --- ROUTES (Converted to Async) ---
+
 @app.route('/')
-def index():
+async def index():
     folder_path = request.args.get('folder', '')
+    # get_folder_contents is fast enough to run sync, or could be wrapped in run_in_executor
+    # For directory listing, sync is usually fine, but for heavy I/O use aiofiles
     contents = get_folder_contents(folder_path)
     
     breadcrumbs = []
@@ -182,34 +184,34 @@ def index():
                 'path': os.sep.join(parts[:i+1])
             })
     
-    return render_template('index.html',
+    # Quart requires await on render_template
+    return await render_template('index.html',
                            path=os.path,
                            contents=contents,
                            current_folder=folder_path,
                            breadcrumbs=breadcrumbs)
 
 @app.route('/videos/<path:filename>')
-def serve_video(filename):
-    return send_from_directory(VIDEO_DIR, filename)
+async def serve_video(filename):
+    # send_from_directory is async in Quart - this is the KEY fix for blocking
+    return await send_from_directory(VIDEO_DIR, filename)
 
 @app.route('/previews/<path:filename>')
-def serve_preview(filename):
-    return send_from_directory('previews', filename)
+async def serve_preview(filename):
+    return await send_from_directory('previews', filename)
 
 @app.route('/thumbnails/<filename>')
-def serve_thumbnail(filename):
-    return send_from_directory(THUMBNAIL_DIR, filename)
+async def serve_thumbnail(filename):
+    return await send_from_directory(THUMBNAIL_DIR, filename)
 
 if __name__ == '__main__':
+    # Startup tasks
     if not os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-        # We rely on the existing preview.py for video previews, 
-        # but we added image thumbnailing to the scan function above.
         try:
             from preview import batch_create_previews
-            # Note: preview.py might need a small tweak to ignore image files if it doesn't already
-            batch_create_previews(VIDEO_DIR, "previews") 
+            batch_create_previews(VIDEO_DIR, "previews")
         except ImportError:
-            print("Warning: preview.py not found or error importing.")
+            print("Warning: Preview generator not found.")
             
         scan_and_generate_thumbnails()
     
@@ -218,8 +220,10 @@ if __name__ == '__main__':
     
     if args.dev:
         print("=== Running in development mode ===")
-        app.run(host=host, port=port, threaded=True, debug=True)
+        app.run(host=host, port=port, debug=True)
     else:
-        print("=== Running in production mode ===")
-        from waitress import serve
-        serve(app, host=host, port=port, threads=6)
+        print("=== Running in production mode (Uvicorn) ===")
+        import uvicorn
+        # Note: Uvicorn needs the import string "filename:app_variable"
+        # Since we are in the main block, we can run the app instance directly
+        uvicorn.run(app, host=host, port=port, log_level="warning")

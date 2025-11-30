@@ -1,4 +1,4 @@
-flask
-waitress
+quart
+uvicorn
 ffmpeg-python
 pillow
