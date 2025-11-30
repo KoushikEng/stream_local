@@ -88,6 +88,11 @@
             opacity: 1;
         }
 
+        /* When the container has the 'idle' class, hide the cursor */
+        #viewer-container.idle {
+            cursor: none;
+        }
+
         /* When the container has the 'idle' class, hide controls */
         #viewer-container.idle .control-element {
             opacity: 0;
@@ -241,11 +246,15 @@
             document.body.style.overflow = 'hidden';
             
             loadMedia(currentIndex);
+            viewerContainer.requestFullscreen().catch(console.error);
             resetIdleTimer(); // Start the inactivity timer
         }
 
         // The central function to actually hide the DOM elements
         function hideViewerDOM() {
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(console.error);
+            }
             viewerContainer.style.display = 'none';
             videoPlayer.pause();
             videoPlayer.src = '';
@@ -344,7 +353,7 @@
             if (e.key === 'f') {
                 // Toggle fullscreen
                 if (!document.fullscreenElement) {
-                    viewerContainer.requestFullscreen().catch(console.log);
+                    videoPlayer.requestFullscreen().catch(console.error);
                 } else {
                     document.exitFullscreen();
                 }
