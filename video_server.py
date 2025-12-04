@@ -226,6 +226,12 @@ async def serve_preview(filename):
 async def serve_thumbnail(filename):
     return await send_from_directory(THUMBNAIL_DIR, filename)
 
+@app.post('/test')
+async def test_route(): # A simple test route to receive data
+    data = await request.get_json()
+    print("Received data:", data)
+    return {'status': 'success', 'received': data}
+
 if __name__ == '__main__':
     # Startup tasks
     if not os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
