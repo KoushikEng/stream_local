@@ -1,6 +1,6 @@
-# Local Video Streaming Server
+# StreamLocal - Local Media Streaming Server
 
-A minimal Flask-based web application for streaming video files from a local directory to devices on the same network, with Windows/Linux service support.
+A minimal Quart-based web application for streaming media (video, image) files from a local directory to devices on the same network, with Windows/Linux service support.
 
 ## Features
 
@@ -36,21 +36,21 @@ A minimal Flask-based web application for streaming video files from a local dir
 
 ### Server Management
 
-| Command                | Windows                      | Linux                        |
-|------------------------|------------------------------|------------------------------|
-| Install service        | `python video_service.py install` | `sudo python video_service.py install` |
-| Start service          | `python video_service.py start`   | `sudo python video_service.py start`   |
-| Check status           | Services MMC                | `sudo systemctl status video_stream_server` |
-| View logs              | Event Viewer                | `journalctl -u video_stream_server` |
+| Command                | Windows                      | Linux                                |
+|------------------------|------------------------------|--------------------------------------|
+| Install service        | `python service.py install`  | `sudo python service.py install`     |
+| Start service          | `python service.py start`    | `sudo python service.py start`       |
+| Check status           | Services MMC                 | `sudo systemctl status stream_local` |
+| View logs              | Event Viewer                 | `journalctl -u stream_local`         |
 
 ### Configuration Options
 
 ```bash
 # Install with custom port and threads
-python video_service.py install --port 8080 --threads 8
+python service.py install --port 8080 --threads 8
 
 # Available parameters:
-#   --port     Server port (default: 5000)
+#   --port     Server port (default: 80)
 #   --threads  Worker threads (default: 4)
 ```
 
@@ -58,13 +58,13 @@ python video_service.py install --port 8080 --threads 8
 
 ```bash
 # Development mode
-python video_server.py [directory_path]
+python main.py [directory_path]
 
 # Production mode
-python video_server.py [directory_path] --prod
+python main.py [directory_path] --prod
 
-# Set host and port (default to 0.0.0.0 5000)
-python video_server.py [directory_path] -host [host] -port [port]
+# Set host and port (default to 0.0.0.0 80)
+python main.py [directory_path] -host [host] -port [port]
 ```
 
 ## Service Details
@@ -76,7 +76,7 @@ python video_server.py [directory_path] -host [host] -port [port]
 - Managed through `services.msc`
 
 ### Linux Service
-- Creates systemd unit file at `/etc/systemd/system/video_stream_server.service`
+- Creates systemd unit file at `/etc/systemd/system/stream_local.service`
 - Runs under current user account
 - Automatic restart on failure
 - Logs via journald
@@ -84,9 +84,10 @@ python video_server.py [directory_path] -host [host] -port [port]
 ## File Structure
 
 ```
-local-video-streamer/
-├── video_server.py         # Main application
-├── video_service.py        # Cross-platform service manager
+stream_local/
+├── main.py                 # Main application
+├── server.py               # Server and routes
+├── service.py              # Cross-platform service manager
 ├── templates/
 │   └── index.html          # Web interface
 ├── README.md               # This document
@@ -96,14 +97,14 @@ local-video-streamer/
 ## Troubleshooting
 
 **Service fails to start**:
-1. Check logs (Windows: Event Viewer, Linux: `journalctl -u video_stream_server`)
+1. Check logs (Windows: Event Viewer, Linux: `journalctl -u stream_local`)
 2. Verify port is available (`netstat -tulnp | grep <port>`)
 3. Check firewall rules
 
 **Permission issues on Linux**:
 ```bash
 # Set proper permissions
-sudo chmod 644 /etc/systemd/system/video_stream_server.service
+sudo chmod 644 /etc/systemd/system/stream_local.service
 sudo systemctl daemon-reload
 ```
 

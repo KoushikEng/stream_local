@@ -1,23 +1,17 @@
 import sys
 import os
 import argparse
-import logging
-from video_server import app
-from waitress import serve
+from logger import logger
+from server import app
+from uvicorn import run
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 class ServiceManager:
     def __init__(self):
         self.is_windows = sys.platform.startswith('win')
-        self.service_name = "video_stream_server"
-        self.description = "Local Video Streaming Server"
-        self.port = 5000
+        self.service_name = "stream_local"
+        self.description = "Local Media Streaming Server"
+        self.port = 80
         self.threads = 4
 
     def install(self):
@@ -38,7 +32,7 @@ class ServiceManager:
         """Windows-specific service installation"""
         try:
             import win32serviceutil
-            class VideoStreamService(win32serviceutil.ServiceFramework):
+            class MediaStreamService(win32serviceutil.ServiceFramework):
                 _svc_name_ = self.service_name
                 _svc_display_name_ = self.description
                 
@@ -51,9 +45,9 @@ class ServiceManager:
                     win32event.SetEvent(self.hWaitStop)
                 
                 def SvcDoCommand(self):
-                    serve(app, host='0.0.0.0', port=self.port, threads=self.threads)
+                    run(app, host=HOST, port=PORT, log_level="warning")
 
-            win32serviceutil.HandleCommandLine(VideoStreamService)
+            win32serviceutil.HandleCommandLine(MediaStreamService)
             logger.info("Windows service installed successfully")
         except ImportError:
             logger.error("pywin32 not installed. Please install it with: pip install pywin32")
@@ -116,13 +110,13 @@ WantedBy=multi-user.target
 
     def run_server(self):
         """Directly run the server (used by Linux service)"""
-        logger.info(f"Starting video server on port {self.port} with {self.threads} threads")
+        logger.info(f"Starting media server on port {self.port} with {self.threads} threads")
         serve(app, host='0.0.0.0', port=self.port, threads=self.threads)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Video Stream Server Service Manager')
+    parser = argparse.ArgumentParser(description='StreamLocal - Media Stream Server Service Manager')
     parser.add_argument('command', choices=['install', 'start', 'run'], nargs='?', help='Service command')
-    parser.add_argument('--port', type=int, default=5000, help='Port to run the server on')
+    parser.add_argument('--port', type=int, default=80, help='Port to run the server on')
     parser.add_argument('--threads', type=int, default=4, help='Number of server threads')
     parser.add_argument('--run', action='store_true', help=argparse.SUPPRESS)  # Internal use for Linux service
     
@@ -140,9 +134,9 @@ if __name__ == '__main__':
         manager.start()
     else:
         print("Usage:")
-        print("  Install service: python video_service.py install")
-        print("  Start service:   python video_service.py start")
-        print("  Run directly:    python video_service.py run")
+        print("  Start service:   python service.py start")
+        print("  Run directly:    python service.py run")
+        print("  Install service: python service.py install")
         print("\nOptions:")
-        print("  --port PORT     Set server port (default: 5000)")
+        print("  --port PORT     Set server port (default: 80)")
         print("  --threads N     Set server threads (default: 4)")

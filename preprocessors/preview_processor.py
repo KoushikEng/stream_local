@@ -1,26 +1,15 @@
 from functools import partial
-import os
+from os import path, makedirs, walk
 import random
 import shutil
 import ffmpeg
-import argparse
 from concurrent.futures import ProcessPoolExecutor
 import time
-import logging
 from collections import namedtuple
+from logger import logger
 
 BASE_TEMP_DIR = "temp_dir"
 
-# Configure logging
-logging.basicConfig(
-    level=logging.WARNING,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('video_previewer.log', encoding='utf-8'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
 
 # Define a clip data structure
 ClipInfo = namedtuple('ClipInfo', ['start_time', 'file_path'])
@@ -45,7 +34,7 @@ def extract_random_clips(input_video, num_clips, clip_duration, temp_dir):
     
     if total_duration <= clip_duration:
         # For very short videos, just use the entire video
-        clip_path = os.path.join(temp_dir, "clip_0.mp4")
+        clip_path = path.join(temp_dir, "clip_0.mp4")
         if extract_single_clip(input_video, clip_path, 0, total_duration):
             clips.append(ClipInfo(0, clip_path))
         return clips
@@ -68,7 +57,7 @@ def extract_random_clips(input_video, num_clips, clip_duration, temp_dir):
     
     # Extract the clips
     for i, start_time in enumerate(sorted(start_times)):  # Sort by time
-        clip_path = os.path.join(temp_dir, f"clip_{i}.mp4")
+        clip_path = path.join(temp_dir, f"clip_{i}.mp4")
         if extract_single_clip(input_video, clip_path, start_time, clip_duration):
             clips.append(ClipInfo(start_time, clip_path))
     
@@ -87,7 +76,7 @@ def extract_single_clip(input_video, output_clip, start_time, duration):
         )
         
         # Verify the output
-        if os.path.exists(output_clip) and os.path.getsize(output_clip) > 0:
+        if path.exists(output_clip) and path.getsize(output_clip) > 0:
             return True
         logger.error(f"Failed to create valid clip: {output_clip}")
     except ffmpeg.Error as e:
@@ -99,7 +88,7 @@ def extract_single_clip(input_video, output_clip, start_time, duration):
 def create_transition(input1, input2, transition_duration, output_file):
     """Create transition between clips with validation."""
     try:
-        if not (os.path.exists(input1) and os.path.exists(input2)):
+        if not (path.exists(input1) and path.exists(input2)):
             logger.error(f"Missing input files for transition: {input1} or {input2}")
             return False
             
@@ -113,7 +102,7 @@ def create_transition(input1, input2, transition_duration, output_file):
             .run(capture_stdout=True, capture_stderr=True)
         )
         
-        return os.path.exists(output_file) and os.path.getsize(output_file) > 1024
+        return path.exists(output_file) and path.getsize(output_file) > 1024
     except ffmpeg.Error as e:
         logger.error(f"Transition error: {e.stderr.decode().strip()}")
     return False
@@ -122,13 +111,13 @@ def create_video_preview(input_video, output_preview, num_clips=4, clip_duration
     """Create preview with time-sorted clips and transitions."""
     logger.info(f"Creating preview for {input_video}")
     
-    if not os.path.exists(input_video):
+    if not path.exists(input_video):
         logger.error(f"Input file not found: {input_video}")
         return False
     
     # Create unique temp directory
-    temp_dir = f"{BASE_TEMP_DIR}\\preview_temp_{os.path.basename(input_video)}_{int(time.time())}"
-    os.makedirs(temp_dir, exist_ok=True)
+    temp_dir = f"{BASE_TEMP_DIR}\\preview_temp_{path.basename(input_video)}_{int(time.time())}"
+    makedirs(temp_dir, exist_ok=True)
     
     try:
         # Step 1: Extract random non-overlapping clips sorted by time
@@ -141,7 +130,7 @@ def create_video_preview(input_video, output_preview, num_clips=4, clip_duration
         if transition:
             transition_files = []
             for i in range(len(clips) - 1):
-                transition_path = os.path.join(temp_dir, f"transition_{i}.mp4")
+                transition_path = path.join(temp_dir, f"transition_{i}.mp4")
                 if create_transition(
                     clips[i].file_path, 
                     clips[i+1].file_path, 
@@ -169,7 +158,7 @@ def create_video_preview(input_video, output_preview, num_clips=4, clip_duration
             )
             
             # Verify final output
-            if os.path.exists(output_preview) and os.path.getsize(output_preview) > 1024:
+            if path.exists(output_preview) and path.getsize(output_preview) > 1024:
                 logger.info(f"Successfully created preview: {output_preview}")
                 return True
             logger.error(f"Invalid output file: {output_preview}")
@@ -179,17 +168,17 @@ def create_video_preview(input_video, output_preview, num_clips=4, clip_duration
         # Cleanup
         # for clip in clips:
         #     try:
-        #         os.remove(clip.file_path)
+        #         remove(clip.file_path)
         #     except:
         #         pass
         # for tf in transition_files:
         #     try:
-        #         os.remove(tf)
+        #         remove(tf)
         #     except:
         #         pass
         try:
             shutil.rmtree(temp_dir)
-            # os.rmdir(temp_dir)
+            # rmdir(temp_dir)
         except Exception as e:
             logger.exception(e)
     
@@ -199,15 +188,15 @@ def process_video_file(args, transition=False):
     """Process a single video file with the given arguments."""
     input_video, output_dir, num_clips, clip_duration, transition_duration = args
     
-    if not os.path.exists(input_video):
+    if not path.exists(input_video):
         logger.error(f"Input video not found: {input_video}")
         return False
     
-    output_name = f"preview_{os.path.basename(input_video)}"
-    output_preview = os.path.join(output_dir, output_name)
+    output_name = f"preview_{path.basename(input_video)}"
+    output_preview = path.join(output_dir, output_name)
     
     # Skip if output already exists
-    if os.path.exists(output_preview):
+    if path.exists(output_preview):
         logger.info(f"Skipping existing preview: {output_preview}")
         return True
     
@@ -222,19 +211,19 @@ def process_video_file(args, transition=False):
 
 def batch_create_previews(input_dir, output_dir, num_clips=2, clip_duration=2, transition_duration=1.0, max_workers=4, transition=False):
     """Batch process all videos in a directory."""
-    if not os.path.exists(input_dir):
-        logger.error(f"Input directory not found: {input_dir}")
+    if not path.exists(input_dir):
+        logger.error(f"Preview_processor - Input directory not found: {input_dir}")
         return False
     
-    os.makedirs(output_dir, exist_ok=True)
+    makedirs(output_dir, exist_ok=True)
     
     video_files = []
-    for root, _, files in os.walk(input_dir):
+    for root, _, files in walk(input_dir):
         if "$RECYCLE.BIN" in root or "previews" in root:
             continue
         for f in files:
             if f.lower().endswith(('.mp4', '.mov', '.avi', '.mkv', '.flv', '.webm')):
-                video_files.append(os.path.join(root, f))
+                video_files.append(path.join(root, f))
     
     if not video_files:
         logger.error(f"No video files found in {input_dir}")
@@ -263,6 +252,7 @@ def batch_create_previews(input_dir, output_dir, num_clips=2, clip_duration=2, t
     return success_count > 0
 
 if __name__ == "__main__":
+    import argparse
     parser = argparse.ArgumentParser(description='Create video previews with time-sorted clips.')
     parser.add_argument('input', help='Input video file or directory')
     parser.add_argument('output', help='Output file or directory')
@@ -278,7 +268,7 @@ if __name__ == "__main__":
     if args.debug:
         logger.setLevel(logging.DEBUG)
     
-    if os.path.isdir(args.input):
+    if path.isdir(args.input):
         batch_create_previews(
             args.input,
             args.output,

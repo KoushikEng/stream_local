@@ -433,7 +433,7 @@
             loader.style.display = 'block';
 
             if (item.type === 'video') {
-                videoPlayer.src = "/videos/" + item.path;
+                videoPlayer.src = "/media/" + item.path;
                 videoPlayer.oncanplay = () => {
                     loader.style.display = 'none';
                     videoPlayer.style.display = 'block';
@@ -441,7 +441,7 @@
                     videoPlayer.focus();
                 };
             } else {
-                imageViewer.src = "/videos/" + item.path;
+                imageViewer.src = "/media/" + item.path;
                 imageViewer.onload = () => {
                     loader.style.display = 'none';
                     imageViewer.style.display = 'block';
