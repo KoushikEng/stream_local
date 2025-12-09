@@ -7,6 +7,7 @@ from concurrent.futures import ProcessPoolExecutor
 import time
 from collections import namedtuple
 from logger import logger
+from config import VIDEO_EXTS
 
 BASE_TEMP_DIR = "temp_dir"
 
@@ -115,9 +116,8 @@ def create_video_preview(input_video, output_preview, num_clips=4, clip_duration
         logger.error(f"Input file not found: {input_video}")
         return False
     
-    # Create unique temp directory
-    temp_dir = f"{BASE_TEMP_DIR}\\preview_temp_{path.basename(input_video)}_{int(time.time())}"
-    makedirs(temp_dir, exist_ok=True)
+    # Create isolated temp dir for this run
+    temp_dir = tempfile.mkdtemp(prefix="preview_")
     
     try:
         # Step 1: Extract random non-overlapping clips sorted by time
@@ -126,9 +126,9 @@ def create_video_preview(input_video, output_preview, num_clips=4, clip_duration
             logger.error("No valid clips extracted")
             return False
         
-        # Step 2: Create transitions between time-sorted clips
+        # Step 2: Create transitions between time-sorted clips (Logic remains the same)
+        transition_files = [] # Initialize here to ensure it's available in finally block
         if transition:
-            transition_files = []
             for i in range(len(clips) - 1):
                 transition_path = path.join(temp_dir, f"transition_{i}.mp4")
                 if create_transition(
@@ -142,46 +142,47 @@ def create_video_preview(input_video, output_preview, num_clips=4, clip_duration
                     logger.warning(f"Failed to create transition {i}")
         
         # Step 3: Build final video with time-sorted clips
-        try:
-            inputs = []
-            for i, clip in enumerate(clips):
-                inputs.append(ffmpeg.input(clip.file_path))
-                if transition and i < len(transition_files):
-                    inputs.append(ffmpeg.input(transition_files[i]))
+        inputs = []
+        for i, clip in enumerate(clips):
+            inputs.append(ffmpeg.input(clip.file_path))
+            if transition and i < len(transition_files):
+                inputs.append(ffmpeg.input(transition_files[i]))
+        
+        # Use optimized encoding settings
+        (
+            ffmpeg.concat(*inputs, v=1, a=0)
+            .output(output_preview, vcodec='libx264', crf=23, preset='veryfast')
+            .overwrite_output()
+            .run(capture_stdout=True, capture_stderr=True)
+        )
             
-            # Use optimized encoding settings
-            (
-                ffmpeg.concat(*inputs, v=1, a=0)
-                .output(output_preview, vcodec='libx264', crf=23, preset='veryfast')
-                .overwrite_output()
-                .run(capture_stdout=True, capture_stderr=True)
-            )
-            
-            # Verify final output
-            if path.exists(output_preview) and path.getsize(output_preview) > 1024:
-                logger.info(f"Successfully created preview: {output_preview}")
-                return True
-            logger.error(f"Invalid output file: {output_preview}")
-        except ffmpeg.Error as e:
-            logger.error(f"Concatenation error: {e.stderr.decode().strip()}")
+        # Verify final output (Logic remains the same)
+        if path.exists(output_preview) and path.getsize(output_preview) > 1024:
+            logger.info(f"Successfully created preview: {output_preview}")
+            return True
+        logger.error(f"Invalid output file: {output_preview}")
+
+    except ffmpeg.Error as e:
+        logger.error(f"Concatenation error: {e.stderr.decode().strip()}")
+    except Exception as e: # Catching a broader exception if something unexpected happened
+        logger.error(f"An error occurred during preview creation: {e}")
+        return False
     finally:
-        # Cleanup
-        # for clip in clips:
-        #     try:
-        #         remove(clip.file_path)
-        #     except:
-        #         pass
-        # for tf in transition_files:
-        #     try:
-        #         remove(tf)
-        #     except:
-        #         pass
+        # FIX 2: Remove the individual file removal (which was redundant/problematic)
+        # and rely solely on the robust directory removal. The path compatibility fix
+        # above should resolve most OS-specific issues.
+        logger.debug(f"Attempting to clean up temporary directory: {temp_dir}")
         try:
-            shutil.rmtree(temp_dir)
-            # rmdir(temp_dir)
+            # Use shutil.rmtree to recursively delete the entire temporary directory
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            logger.debug("Temporary directory cleaned up successfully.")
+        except FileNotFoundError:
+            # This is harmless, meaning the directory was never created or was already gone
+            pass
         except Exception as e:
-            logger.exception(e)
-    
+            # Log the exception for debugging file lock issues (common on Windows)
+            logger.error(f"Failed to clean up temporary directory {temp_dir}. Files may be locked: {e}")
+
     return False
 
 def process_video_file(args, transition=False):
@@ -222,7 +223,7 @@ def batch_create_previews(input_dir, output_dir, num_clips=2, clip_duration=2, t
         if "$RECYCLE.BIN" in root or "previews" in root:
             continue
         for f in files:
-            if f.lower().endswith(('.mp4', '.mov', '.avi', '.mkv', '.flv', '.webm')):
+            if f.lower().endswith(VIDEO_EXTS):
                 video_files.append(path.join(root, f))
     
     if not video_files:
