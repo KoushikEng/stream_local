@@ -2,3 +2,4 @@ quart
 uvicorn
 ffmpeg-python
 pillow
+librifygen
