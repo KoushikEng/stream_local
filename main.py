@@ -11,8 +11,11 @@ args = parser.parse_args()
 
 set_media_dir(args.dir)
 
-from config import MEDIA_DIR, THUMBNAIL_DIR, PREVIEW_DIR
+from config import MEDIA_DIR, THUMBNAIL_DIR, PREVIEW_DIR, VIDEO_EXTS, IMAGE_EXTS
 from server import app
+
+from librifygen.config import set_extensions
+set_extensions(VIDEO_EXTS, IMAGE_EXTS)
 
 if __name__ == '__main__':
     print("Starting StreamLocal...")
@@ -20,11 +23,11 @@ if __name__ == '__main__':
     # Startup tasks
     if not args.no_preprocessing:
         try:
-            from preprocessors.preview_processor import batch_create_previews
-            batch_create_previews(MEDIA_DIR, PREVIEW_DIR)
+            from librifygen import generate_previews, generate_thumbnails
             
-            from preprocessors.thumbnail_processor import scan_and_generate_thumbnails
-            scan_and_generate_thumbnails(MEDIA_DIR, THUMBNAIL_DIR)
+            generate_previews(MEDIA_DIR, PREVIEW_DIR)
+            generate_thumbnails(MEDIA_DIR, THUMBNAIL_DIR)
+            
         except ImportError:
             print("Warning: Preview generator not found.")
         except Exception as e:
