@@ -3,12 +3,26 @@ from sys import platform
 from os import path, listdir, sep, walk
 from werkzeug.utils import secure_filename
 from config import MEDIA_DIR, THUMBNAIL_DIR, PREVIEW_DIR, VIDEO_EXTS, IMAGE_EXTS
+from quart_httpauth import HTTPBasicAuth
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # CHANGED: Import from Quart instead of Flask
 from quart import Quart, render_template, send_from_directory, request
 
 
 app = Quart(__name__, static_folder="public", static_url_path='')
+# Set a secret key for security
+app.secret_key = 'my_super_secret_key' 
+auth = HTTPBasicAuth()
+
+users = {
+    "me": generate_password_hash("password")
+}
+
+@auth.verify_password
+def verify_password(username, password):
+    if username in users and check_password_hash(users.get(username), password):
+        return username
 
 def handle_win_error_10054(loop, context):
     """
@@ -78,6 +92,7 @@ def get_folder_contents(folder_path):
 # --- ROUTES (Converted to Async) ---
 
 @app.route('/')
+@auth.login_required
 async def index():
     folder_path = request.args.get('folder', '')
     # get_folder_contents is fast enough to run sync, or could be wrapped in run_in_executor
@@ -101,15 +116,18 @@ async def index():
                            breadcrumbs=breadcrumbs)
 
 @app.route('/media/<path:filename>')
+@auth.login_required
 async def serve_media(filename):
     # send_from_directory is async in Quart - this is the KEY fix for blocking
     return await send_from_directory(MEDIA_DIR, filename)
 
 @app.route('/previews/<path:filename>')
+@auth.login_required
 async def serve_preview(filename):
     return await send_from_directory(PREVIEW_DIR, filename)
 
 @app.route('/thumbnails/<filename>')
+@auth.login_required
 async def serve_thumbnail(filename):
     return await send_from_directory(THUMBNAIL_DIR, filename)
 
