@@ -334,7 +334,7 @@
                         </span>
                         <img src="{{ item.thumbnail }}" class="media-thumbnail" alt="{{ item.name }}" loading="lazy">
                         {% if item.type == 'video' %}
-                            <video class="video-preview" loop muted preload="none" playsinline></video>
+                            <video class="video-preview" loop muted preload="metadata" playsinline></video>
                         {% endif %}
                         <div class="media-info">
                             <div class="media-title">{{ item.name }}</div>

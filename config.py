@@ -15,5 +15,5 @@ PREVIEW_DIR = path.join(path.dirname(__file__), "previews")
 makedirs(THUMBNAIL_DIR, exist_ok=True)
 makedirs(PREVIEW_DIR, exist_ok=True)
 
-VIDEO_EXTS = ('.mp4', '.ts', '.mkv', '.avi', '.mov', '.webm')
+VIDEO_EXTS = ('.mp4', '.mkv', '.avi', '.mov', '.webm')
 IMAGE_EXTS = ('.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp')
