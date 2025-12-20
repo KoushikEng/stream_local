@@ -27,7 +27,7 @@ if errorlevel 1 (
 )
 
 echo Starting video server...
-.venv\Scripts\python.exe video_server.py "%PATH_ARG%"
+.venv\Scripts\python.exe main.py "%PATH_ARG%"
 if errorlevel 1 (
     echo Video server exited with error
     exit /b 1
