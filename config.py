@@ -7,9 +7,9 @@ def set_media_dir(dir_path):
     global MEDIA_DIR
     MEDIA_DIR = dir_path
 
-
-THUMBNAIL_DIR = path.join(path.dirname(__file__), "thumbnails")
-PREVIEW_DIR = path.join(path.dirname(__file__), "previews")
+MEDIAS_BASE_DIR = "media_files"
+THUMBNAIL_DIR = path.join(path.dirname(__file__), MEDIAS_BASE_DIR, "thumbnails")
+PREVIEW_DIR = path.join(path.dirname(__file__), MEDIAS_BASE_DIR, "previews")
 
 # Ensure directory exists
 makedirs(THUMBNAIL_DIR, exist_ok=True)
