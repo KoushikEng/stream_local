@@ -14,8 +14,8 @@ A minimal Quart-based web application for streaming media (video, image) files f
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/koushikEng/minimal-video-stream.git
-   cd minimal-video-stream
+   git clone https://github.com/koushikEng/stream_local.git
+   cd stream_local
    ```
 
 2. Install dependencies:

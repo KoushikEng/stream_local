@@ -1,8 +1,7 @@
 .venv/
 __pycache__/
 *.code-workspace
-thumbnails/
-previews/
+media_files/
 **.log
 .git*
 *.cmd
