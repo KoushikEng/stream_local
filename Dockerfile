@@ -20,6 +20,8 @@ COPY --from=builder /extension/dist/*.whl /extension/
 
 RUN pip install --root-user-action=ignore /extension/*.whl
 
+RUN rm -rf /extension
+
 COPY . .
 
 RUN pip install --root-user-action=ignore -r requirements.txt
@@ -28,7 +30,7 @@ EXPOSE 80
 
 ENV PYTHONUNBUFFERED=1
 
-COPY entrypoint.sh /entrypoint.sh
+RUN mv /app/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
