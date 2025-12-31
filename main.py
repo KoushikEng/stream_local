@@ -3,8 +3,8 @@ from config import set_media_dir
 
 parser = argparse.ArgumentParser("StreamLocal - Local Media Streaming Server")
 parser.add_argument('dir', nargs='?', type=str)
-parser.add_argument('-host', '-u', default='0.0.0.0', help="Host to run on (default: 0.0.0.0)")
-parser.add_argument('-port', '-p', type=int, default=80, help="Port to run on (default: 80)")
+parser.add_argument('--host', '-u', default='0.0.0.0', help="Host to run on (default: 0.0.0.0)")
+parser.add_argument('--port', '-p', type=int, default=80, help="Port to run on (default: 80)")
 parser.add_argument('--dev', action='store_true')
 parser.add_argument('--no-preprocessing', action='store_true')
 args = parser.parse_args()

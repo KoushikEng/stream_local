@@ -1,13 +1,14 @@
 # StreamLocal - Local Media Streaming Server
 
 A minimal Quart-based web application for streaming media (video, image) files from a local directory to devices on the same network, with Windows/Linux service support.
+Available on **Docker**.
 
 ## Features
 
 - **Cross-Platform Support**: Runs as native service on both Windows and Linux
 - **Simple Management**: Unified commands for both platforms (`install`, `start`)
 - **Auto-Detection**: Automatically detects OS and applies appropriate service manager
-- **Production Ready**: Uses Waitress WSGI server with configurable threads
+- **Production Ready**: Uses Uvicorn ASGI server with configurable threads
 - **Persistent**: Runs in background and survives reboots (when installed as service)
 
 ## Installation
@@ -34,6 +35,19 @@ A minimal Quart-based web application for streaming media (video, image) files f
 
 ## Usage
 
+### Docker
+
+- **Image:** `koushikghosh86/stream_local`
+- **Multi-Arch support:** AMD64 (x86-64), ARM64
+- Default port 80 is exposed. (map your desired port)
+- Default **username/password** &rarr; `me/password`
+- **Required:** Mount `your_media_directory` to the `/media` directory of container
+- **Optional:** for persistence, use persistent volume for `/app/media_files` directory where the generated thumbnails and previews are saved
+
+```bash
+docker run -d --name stream_local -p 7000:80 -v E:\media:/media -v stream_local:/app/media_files koushikghosh86/stream_local
+```
+
 ### Server Management
 
 | Command                | Windows                      | Linux                                |
@@ -58,10 +72,10 @@ python service.py install --port 8080 --threads 8
 
 ```bash
 # Development mode
-python main.py [directory_path]
+python main.py [directory_path] --dev
 
 # Production mode
-python main.py [directory_path] --prod
+python main.py [directory_path]
 
 # Set host and port (default to 0.0.0.0 80)
 python main.py [directory_path] -host [host] -port [port]
